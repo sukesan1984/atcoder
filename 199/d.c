@@ -138,73 +138,26 @@ int count_adjancy_count(t_vertex_info **vi, t_ll **adjancy_list, int N)
 	return (s);
 }
 
-// 無色のところを順番に塗っていく (invalidな時は -1)を返す
-int color_recursive(t_vertex_info **vi, t_ll **adjancy_list, int vertex, int caller_vertex)
+// 無色のところを順番に塗っていく (invalidな時は 0)を返す
+int is_bipartite_graph(t_vertex_info **vi, t_ll **adjancy_list, int vertex, int color)
 {
 	t_ll *cur;
-	int res;
-	// 直接呼び出された場合
-	if (caller_vertex == -1)
-	{
-		if (vi[vertex]->color == 0)
-			;//何もしない;
-		else if (vi[vertex]->color == -1)
-			;//次の呼び出しをする
-		else
-			;
-	}
-	else
-	{
-		// 誰かから呼び出された
-		if (vi[caller_vertex]->color == 0) // 呼び出し元が赤の場合
-		{
-			if (vi[vertex]->color == 0)
-				return (-1);
-			else if (vi[vertex]->color == -1)
-				;
-			else // 青か緑
-				;
-		}
-		else if (vi[caller_vertex]->color == -1) // 呼び出し元が無色のとき
-		{
-			if (vi[vertex]->color == 0)
-				;
-			else if (vi[vertex]->color == -1)
-			{
-				vi[caller_vertex]->color = 1;
-				vi[vertex]->color = 2;
-			}
-			else
-				vi[caller_vertex]->color = (vi[vertex]->color == 1) ? 2 : 1;
-		}
-		else // 呼び出し元が青か緑
-		{
-			if (vi[vertex]->color == 0)
-				;
-			else if (vi[vertex]->color == -1)
-				vi[vertex]->color = (vi[caller_vertex]->color == 1) ? 2 : 1;
-			else
-			{
-				if (vi[vertex]->color == vi[caller_vertex]->color)
-					return (-1);
-			}
-		}
-	}
-	// 既に訪れていた場合は、再帰処理はとめる
-	if (vi[vertex]->visit && vi[vertex]->color != -1)
-		return (0);
-	vi[vertex]->visit = 1;
-	// 再帰的に次の接点を呼ぶ
+	// 無色じゃなければ何もしない
+	if (vi[vertex]->color != -1)
+		return (1);
+
+	// 無色だったら塗る
+	vi[vertex]->color = color;
 	cur = adjancy_list[vertex];
 	while (cur)
 	{
-		res = color_recursive(vi, adjancy_list, cur->vertex, vertex);
-		if (res == -1)
-			return (res);
+		if (vi[cur->vertex]->color == color)
+			return (0);
+		if (vi[cur->vertex]->color == -1 && !is_bipartite_graph(vi, adjancy_list, cur->vertex, (color == 1) ? 2 : 1))
+			return (0);
 		cur = cur->next;
 	}
-
-	return (0);
+	return (1);
 }
 
 int valid_coloring(t_vertex_info **vi, t_ll **adjancy_list, int N)
@@ -212,30 +165,9 @@ int valid_coloring(t_vertex_info **vi, t_ll **adjancy_list, int N)
 	int res;
 	for (int i = 0; i < N; i++)
 	{
-		res = color_recursive(vi, adjancy_list, i, -1);
-		if (res == -1)
+		res = is_bipartite_graph(vi, adjancy_list, i, 1);
+		if (!res)
 			return (0);
-	}
-	return (1);
-}
-
-int is_bipartite_graph(t_vertex_info **vi, t_ll **adjancy_list, int N)
-{
-	t_ll *cur;
-	int vertex_color;
-
-	for (int i = 0; i < N; i++)
-	{
-		//printf("vertex: %d, color: %d\n", i, vi[i]->color);
-		vertex_color = vi[i]->color;
-		cur = adjancy_list[i];
-		while (cur)
-		{
-			//printf(" adj vertex: %d, color: %d\n", cur->vertex, vi[cur->vertex]->color);
-			if (vi[cur->vertex]->color == vertex_color)
-				return (0);
-			cur = cur->next;
-		}
 	}
 	return (1);
 }
@@ -295,16 +227,25 @@ int main()
 	int s;
 
 	int count = 0;
+	int ng = 0;
 	for (int i = 0; i < red_count; i++)
 	{
+		ng = 0;
 		//printf("%d reset\n", i);
 		// 赤で初期化する
 		reset_vi(vi, N, i);
-		if (!valid_coloring(vi, adjancy_list, N))
+		// 赤が隣り合ってないかチェックする
+		for (int j = 0; j < M; j++)
+		{
+			if (vi[A[j]]->color == 0 && vi[B[j]]->color == 0)
+			{
+				ng = 1;
+				break;
+			}
+		}
+		if (ng)
 			continue;
-		//show_vi(vi, N);
-		//printf("\n");
-		if (is_bipartite_graph(vi, adjancy_list, N))
+		if (valid_coloring(vi, adjancy_list, N))
 		{
 			//show_vi(vi, N);
 			//printf(" [ok]\n");
